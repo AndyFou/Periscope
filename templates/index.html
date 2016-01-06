@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Periscope</title>
+  <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+  <style media="screen">
+    .wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .addimg{
+      padding-top: 50px;
+    }
+  </style>
+  <!-- <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}"> -->
+</head>
+
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="jumbotron">
+        <p class="intro">Welcome to <strong>Periscope</strong>! <br> You can either search for your image or take a tiny nap (aka mpousouloto). <br> <em>Enjoy either :)</em> </p>
+        <form class="addimg" action="/addimg" method="post" enctype="multipart/form-data">
+          <div class="form-group">
+            <label for="exampleInputFile">File input</label>
+            <input class="input" type="file" name="file">
+            <!-- <p class="help-block">Example block-level help text here.</p> -->
+          </div>
+          <input type="submit" value="upload" class="btn btn-default">
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
