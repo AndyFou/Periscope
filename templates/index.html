@@ -4,33 +4,35 @@
 <head>
   <title>Periscope</title>
   <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-  <style media="screen">
-    .wrapper {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-
-    .addimg{
-      padding-top: 50px;
-    }
-  </style>
+  <link href='https://fonts.googleapis.com/css?family=Merriweather' rel='stylesheet' type='text/css'>
+  <link rel="stylesheet" href="../static/style.css" media="screen" charset="utf-8">
   <!-- <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}"> -->
+  <script>
+    function background_change(){
+      var x = (Math.random()*6.99)|0;
+      document.body.className="bg" + x;
+    }
+  </script>
 </head>
 
-<body>
+<body onload="background_change()">
   <div class="wrapper">
     <div class="container">
+      <div class="logo">
+        <img src="../static/logo.png" alt="logo" />
+      </div>
       <div class="jumbotron">
-        <p class="intro">Welcome to <strong>Periscope</strong>! <br> You can either search for your image or take a tiny nap (aka mpousouloto). <br> <em>Enjoy either :)</em> </p>
+        <!-- <p class="intro">Welcome to <strong>Periscope</strong>! <br> You can either search for your image or take a tiny nap (aka mpousouloto). <br> <em>Enjoy either :)</em> </p> -->
+        <p class="intro">Upload your image and search for similar ones over here:</p>
         <form class="addimg" action="/addimg" method="post" enctype="multipart/form-data">
           <div class="form-group">
-            <label for="exampleInputFile">File input</label>
+            <!-- <label for="exampleInputFile">File input</label> -->
             <input class="input" type="file" name="file">
             <!-- <p class="help-block">Example block-level help text here.</p> -->
           </div>
-          <input type="submit" value="upload" class="btn btn-default">
+          <div class="uploadbtn">
+            <input type="submit" value="upload" class="btn btn-default">
+          </div>
         </form>
       </div>
     </div>
