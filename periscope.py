@@ -1,4 +1,5 @@
 import os
+from os import remove
 from flask import Flask, render_template, request, redirect, send_from_directory, url_for
 import psycopg2
 import sys
@@ -7,6 +8,7 @@ from logging.handlers import RotatingFileHandler
 import cv2
 import numpy as np
 import argparse
+from shutil import copy
 # from matplotlib import pyplot as plt
 
 app = Flask(__name__)
@@ -40,11 +42,12 @@ def addimg():
         if file and allowed_file(file.filename):
             #  GET IMAGE
             # filename = secure_filename
-            # file.save(os.path.join(app.config['UPLOAD_FOLDER'],file.filename))        #TO BE ADDED
-            file.save(os.path.join(file.filename))
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'],file.filename))        #TO BE ADDED
+            copy(os.path.join(app.config['UPLOAD_FOLDER'],file.filename),file.filename)
 
             #  COMPUTE COLOR HISTOGRAM
             image = cv2.imread(file.filename)               #Read Image
+            os.remove(file.filename)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  #Convert to HSV
             bins = (8, 12, 3)                               #Define the bins that will be extracted
             querycolorfeatures = []
@@ -57,19 +60,26 @@ def addimg():
             #Convert histogram to color features
             querycolorfeatures.extend(hist)
             querycolorfeatures = [str(f) for f in querycolorfeatures]
-            fquerycolorfeatures = convert_to_float(querycolorfeatures)
+            fquerycolorfeatures = [float(x) for x in querycolorfeatures]
 
             #  SEARCH
             cur = conn.cursor()
-            cur.execute("SELECT color FROM images;")
+            cur.execute("SELECT img, color FROM images;")
             dbimages = cur.fetchall()
-            for item in dbimages:
-                # app.logger.info(item)
-                currcolorfeatures = convert_to_float(item)
 
-                #Calculate ChiSquare distance
+            results = {}
+            for item in dbimages:
+                url = item[0]
+                currcolorfeatures = item[1]
+
+                currcolorfeatures = currcolorfeatures.split(",")
+                currcolorfeatures[0] = currcolorfeatures[0][1:]
+                currcolorfeatures[-1] = currcolorfeatures[-1][:-1]
+                currcolorfeatures = [float(x) for x in currcolorfeatures]
+
+                # Calculate ChiSquare distance
                 d = 0.5 * np.sum([((a - b) ** 2) / (a + b + 1e-10) for (a, b) in zip(currcolorfeatures, fquerycolorfeatures)])
-                app.logger.info(d)
+                results[url] = d
 
             #  SAVE IMAGE TO DATABASE
             imgurl = url_for('uploaded_file', filename=file.filename);
@@ -77,18 +87,21 @@ def addimg():
             conn.commit()
             cur.close()
             # return redirect(url_for('uploaded_file',filename=file.filename))
+
+            #Get results
+            results = sorted([(feature, index) for (index, feature) in results.items()])
+            urls = []
+            for key, value in results:
+                urls.append(value)
+            return render_template('results.html', urls=urls[:8])
+
     return render_template('index.html')
+
+#app.logger.info(results)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-def convert_to_float(array):
-    array = array[0].split(",")
-    array[0] = array[0][1:]
-    array[-1] = array[-1][:-1]
-    array = [float(x) for x in array]
-    return array
 
 # if __name__ == '__main__':
 handler = RotatingFileHandler('foo.log', maxBytes=10000, backupCount=1)
