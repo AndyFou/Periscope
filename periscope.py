@@ -9,7 +9,9 @@ import cv2
 import numpy as np
 import argparse
 from shutil import copy
-# from matplotlib import pyplot as plt
+from skimage.feature import local_binary_pattern
+from scipy.stats import itemfreq
+from sklearn.preprocessing import normalize
 
 app = Flask(__name__)
 
@@ -45,24 +47,41 @@ def addimg():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'],file.filename))        #TO BE ADDED
             copy(os.path.join(app.config['UPLOAD_FOLDER'],file.filename),file.filename)
 
-            #  COMPUTE COLOR HISTOGRAM
-            image = cv2.imread(file.filename)               #Read Image
+            #  COMPUTE COLOR
+            image = cv2.imread(file.filename)                    #Read Image
             os.remove(file.filename)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)  #Convert to HSV
-            bins = (8, 12, 3)                               #Define the bins that will be extracted
+
+            image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)   #Convert to HSV
+            bins = (8, 12, 3)                                    #Define the bins that will be extracted
             querycolorfeatures = []
+            querytexturefeatures = []
 
             #Calculate color histogram
-            hist = cv2.calcHist([image], [0,1,2], None, bins, [0, 180, 0, 256, 0, 256])
-            cv2.normalize(hist, hist)
-            hist = hist.flatten()
+            color_hist = cv2.calcHist([image_hsv], [0,1,2], None, bins, [0, 180, 0, 256, 0, 256])
+            cv2.normalize(color_hist, color_hist)
+            color_hist = color_hist.flatten()
 
             #Convert histogram to color features
-            querycolorfeatures.extend(hist)
+            querycolorfeatures.extend(color_hist)
             querycolorfeatures = [str(f) for f in querycolorfeatures]
             fquerycolorfeatures = [float(x) for x in querycolorfeatures]
 
-            #  SEARCH
+            #  COMPUTE TEXTURE
+
+            #Calculate texture histogram
+            image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  #Convert to HSV
+            radius = 3
+            no_points = 8 * radius                                # Number of points to be considered as neighbourers
+            lbp = local_binary_pattern(image_gray, no_points, radius, method='uniform')
+            x = itemfreq(lbp.ravel())
+            texture_hist = x[:, 1]/sum(x[:, 1])
+
+            #Convert histogram to color features
+            querytexturefeatures.extend(texture_hist)
+            fquerytexturefeatures = [float(x) for x in querytexturefeatures]
+            app.logger.info(querytexturefeatures)
+
+            #  PERFORM SEARCH
             cur = conn.cursor()
             cur.execute("SELECT img, color FROM images;")
             dbimages = cur.fetchall()
@@ -83,12 +102,12 @@ def addimg():
 
             #  SAVE IMAGE TO DATABASE
             imgurl = url_for('uploaded_file', filename=file.filename);
-            cur.execute("INSERT INTO images (img, color) VALUES(%s, %s)", ("'" + imgurl + "'",querycolorfeatures))
+            cur.execute("INSERT INTO images (img, color, texture) VALUES(%s, %s, %s)", ("'" + imgurl + "'",querycolorfeatures,querytexturefeatures))
             conn.commit()
             cur.close()
             # return redirect(url_for('uploaded_file',filename=file.filename))
 
-            #Get results
+            #  GET SEARCH RESULTS
             results = sorted([(feature, index) for (index, feature) in results.items()])
             urls = []
             for key, value in results:
