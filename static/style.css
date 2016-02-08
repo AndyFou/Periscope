@@ -1,0 +1,55 @@
+body{
+  background-color: rgb(30,30,30);
+  background-size: cover;
+}
+
+.bg0{background-image: url('bg/background.jpg');}
+.bg1{background-image: url('bg/background2.jpg');}
+.bg2{background-image: url('bg/background3.jpg');}
+.bg3{background-image: url('bg/background4.jpg');}
+.bg4{background-image: url('bg/background5.jpg');}
+.bg5{background-image: url('bg/background6.jpg');}
+.bg6{background-image: url('bg/background7.jpg');}
+
+.wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.container{
+  margin-top: -150px;
+}
+
+.logo{
+  width: 100%;
+  height: 77px;
+  text-align: center;
+}
+
+.logo img{
+  position: relative;
+  width: 250px;
+}
+
+.jumbotron{
+  background-color: rgba(80,80,80,0.7);
+  color: #DDD;
+  border: 2px solid black;
+}
+
+.intro{
+  font-family: 'Merriweather', serif;
+  padding-top: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addimg{
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
