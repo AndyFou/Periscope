@@ -15,6 +15,8 @@ from sklearn.preprocessing import normalize
 
 app = Flask(__name__)
 
+#APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+#UPLOAD_FOLDER = os.path.join(APP_ROOT, 'uploads')
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = set(['png','jpg','jpeg','gif','bmp'])  #TO-DO: check for uppercase image extensions
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -25,7 +27,7 @@ def allowed_file(filename):
 #  CONNECT DATABASE / CREATE SCHEMA
 @app.route('/createdb')
 def createdb():
-    conn = psycopg2.connect("dbname=periscope user=postgres password=morfeaki")
+    conn = psycopg2.connect("dbname=root user=root password=qwe")
     cur = conn.cursor()
 
     # Create table Images where there will be the Image Path and the 3 vectors of the visual features
@@ -43,7 +45,7 @@ def main():
     if request.method == 'POST':
         file = request.files['file']
         if file and allowed_file(file.filename):
-            conn = psycopg2.connect("dbname=periscope user=postgres password=morfeaki")
+            conn = psycopg2.connect("dbname=root user=root password=qwe")
 
             #  GET IMAGE
             file.save(os.path.join(app.config['UPLOAD_FOLDER'],file.filename))        #TO BE ADDED
@@ -155,7 +157,7 @@ def addimg():
     if request.method == 'POST':
         file = request.files['file']
         if file and allowed_file(file.filename):
-            conn = psycopg2.connect("dbname=periscope user=postgres password=morfeaki")
+            conn = psycopg2.connect("dbname=root user=root password=qwe")
 
             #  GET IMAGE
             file.save(os.path.join(app.config['UPLOAD_FOLDER'],file.filename))
@@ -210,8 +212,5 @@ def addimg():
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# if __name__ == '__main__':
-handler = RotatingFileHandler('foo.log', maxBytes=10000, backupCount=1)
-handler.setLevel(logging.INFO)
-app.logger.addHandler(handler)
-app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=80)
