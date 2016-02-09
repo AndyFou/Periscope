@@ -22,11 +22,13 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
+#  CONNECT DATABASE / CREATE SCHEMA
 @app.route('/createdb')
 def createdb():
     conn = psycopg2.connect("dbname=periscope user=postgres password=morfeaki")
     cur = conn.cursor()
 
+    # Create table Images where there will be the Image Path and the 3 vectors of the visual features
     cur.execute('CREATE TABLE images (id serial PRIMARY KEY, img varchar, color varchar, shape varchar, texture varchar);')
     conn.commit()
 
@@ -35,6 +37,7 @@ def createdb():
 
     return 'Table created!'
 
+#  MAIN METHOD
 @app.route('/', methods=['GET','POST'])
 def main():
     if request.method == 'POST':
@@ -54,6 +57,7 @@ def main():
             bins = (8, 12, 3)                                    #Define the bins that will be extracted
             querycolorfeatures = []
             querytexturefeatures = []
+            queryshapefeatures = []
 
             #Calculate color histogram
             color_hist = cv2.calcHist([image_hsv], [0,1,2], None, bins, [0, 180, 0, 256, 0, 256])
@@ -79,11 +83,20 @@ def main():
             querytexturefeatures.extend(texture_hist)
             fquerytexturefeatures = [float(x) for x in querytexturefeatures]
 
+            #  COMPUTE SHAPE
+
+            #Calculate texture histogram
+            shape_hist = cv2.HuMoments(cv2.moments(image_gray)).flatten()
+
+            #Convert histogram to color features
+            queryshapefeatures.extend(shape_hist)
+            fqueryshapefeatures = [float(x) for x in queryshapefeatures]
+
             #  PERFORM SEARCH
-            querytotalfeature = fquerycolorfeatures + fquerytexturefeatures
+            querytotalfeature = fquerycolorfeatures + fquerytexturefeatures + fqueryshapefeatures
 
             cur = conn.cursor()
-            cur.execute("SELECT img, color, texture FROM images;")
+            cur.execute("SELECT img, color, texture, shape FROM images;")
             dbimages = cur.fetchall()
 
             results = {}
@@ -91,6 +104,7 @@ def main():
                 url = item[0]
                 currcolorfeatures = item[1]
                 currtexturefeatures = item[2]
+                currshapefeatures = item[3]
 
                 # Get db-images color features
                 currcolorfeatures = currcolorfeatures.split(",")
@@ -104,16 +118,22 @@ def main():
                 currtexturefeatures[-1] = currtexturefeatures[-1][:-1]
                 currtexturefeatures = [float(x) for x in currtexturefeatures]
 
-                currtotalfeature = currcolorfeatures + currtexturefeatures
+                # Get db-images texture features
+                currshapefeatures = currshapefeatures.split(",")
+                currshapefeatures[0] = currshapefeatures[0][1:]
+                currshapefeatures[-1] = currshapefeatures[-1][:-1]
+                currshapefeatures = [float(x) for x in currshapefeatures]
+
+                currtotalfeature = currcolorfeatures + currtexturefeatures + currshapefeatures
 
                 # Calculate ChiSquare distance
                 # d = 0.5 * np.sum([((a - b) ** 2) / (a + b + 1e-10) for (a, b) in zip(currcolorfeatures, fquerycolorfeatures)])
                 d = 0.5 * np.sum([((a - b) ** 2) / (a + b + 1e-10) for (a, b) in zip(currtotalfeature, querytotalfeature)])
-                results[url] = d
+                results[url] = d/3
 
             #  SAVE IMAGE TO DATABASE
             imgurl = url_for('uploaded_file', filename=file.filename);
-            cur.execute("INSERT INTO images (img, color, texture) VALUES(%s, %s, %s)", ("'" + imgurl + "'",querycolorfeatures,querytexturefeatures))
+            cur.execute("INSERT INTO images (img, color, shape, texture) VALUES(%s, %s, %s, %s)", ("'" + imgurl + "'",querycolorfeatures,queryshapefeatures,querytexturefeatures))
             conn.commit()
             cur.close()
             conn.close()
@@ -122,9 +142,11 @@ def main():
             #  GET SEARCH RESULTS
             results = sorted([(feature, index) for (index, feature) in results.items()])
             urls = []
+            distances = []
             for key, value in results:
                 urls.append(value)
-            return render_template('results.html', urls=urls[:8])
+                distances.append(key)
+            return render_template('results.html', urls=urls[:8], distances=distances[:8])
 
     return render_template('index.html')
 
@@ -136,7 +158,7 @@ def addimg():
             conn = psycopg2.connect("dbname=periscope user=postgres password=morfeaki")
 
             #  GET IMAGE
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'],file.filename))        #TO BE ADDED
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'],file.filename))
             copy(os.path.join(app.config['UPLOAD_FOLDER'],file.filename),file.filename)
 
             #  COMPUTE COLOR
@@ -147,6 +169,7 @@ def addimg():
             bins = (8, 12, 3)                                    #Define the bins that will be extracted
             querycolorfeatures = []
             querytexturefeatures = []
+            queryshapefeatures = []
 
             #Calculate color histogram
             color_hist = cv2.calcHist([image_hsv], [0,1,2], None, bins, [0, 180, 0, 256, 0, 256])
@@ -166,10 +189,14 @@ def addimg():
             texture_hist = x[:, 1]/sum(x[:, 1])
             querytexturefeatures.extend(texture_hist)
 
+            #  COMPUTE SHAPE
+            shape_hist = cv2.HuMoments(cv2.moments(image_gray)).flatten()
+            queryshapefeatures.extend(shape_hist)
+
             #  SAVE IMAGE TO DATABASE
             imgurl = url_for('uploaded_file', filename=file.filename);
             cur = conn.cursor()
-            cur.execute("INSERT INTO images (img, color, texture) VALUES(%s, %s, %s)", ("'" + imgurl + "'",querycolorfeatures,querytexturefeatures))
+            cur.execute("INSERT INTO images (img, color, shape, texture) VALUES(%s, %s, %s, %s)", ("'" + imgurl + "'",querycolorfeatures,queryshapefeatures,querytexturefeatures))
             conn.commit()
             cur.close()
             conn.close()
